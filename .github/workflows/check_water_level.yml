@@ -2,8 +2,10 @@ name: Yamato river Fujii water level check
 
 on:
   schedule:
-    # 30分おき（UTC基準。GitHub Actionsの仕様上、実際の発火時刻は数分前後します）
-    - cron: "*/10 * * * *"
+    # 日本時間 7:00〜17:59 の間だけ、30分おきに実行する
+    # (cronはUTC基準。UTC 22:00-23:59 と 00:00-08:59 が JST 7:00-17:59 に相当)
+    - cron: "*/30 22-23 * * *"
+    - cron: "*/30 0-8 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -25,7 +27,7 @@ jobs:
       - name: Check water level
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-          THRESHOLD_M: "0.9"
+          THRESHOLDS: "0.9,1.0,1.1"
         run: python check_water_level.py
 
       - name: Commit updated state
