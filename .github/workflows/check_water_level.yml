@@ -3,7 +3,7 @@ name: Yamato river Fujii water level check
 on:
   schedule:
     # 30分おき（UTC基準。GitHub Actionsの仕様上、実際の発火時刻は数分前後します）
-    - cron: "*/10 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
 permissions:
