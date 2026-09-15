@@ -27,12 +27,17 @@ THRESHOLD_M = float(os.environ.get("THRESHOLD_M", "0.9"))
 NTFY_TOPIC = os.environ["NTFY_TOPIC"]  # GitHub Secrets で設定する（自分だけが知るランダムな文字列にすること）
 STATE_FILE = "data/state.json"
 
+SITE_INFO_URL = f"https://www1.river.go.jp/cgi-bin/SiteInfo.exe?ID={STATION_ID}"
 REALTIME_LIST_URL = (
     f"https://www1.river.go.jp/cgi-bin/DspWaterData.exe?KIND=9&ID={STATION_ID}"
 )
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; personal-river-level-watch/1.0; +for personal notification use)"
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "ja,en;q=0.9",
 }
 
 
@@ -41,16 +46,32 @@ def fetch_dat_url() -> str:
 
     国交省側は .dat のファイル名に毎回変わるPIDのような値を含めているため、
     URLを直接組み立てず、必ずこの一覧ページからリンクを抽出する。
+    通常のブラウザ操作を模して、観測所情報ページ→リアルタイム一覧ページの順にアクセスする。
     """
-    res = requests.get(REALTIME_LIST_URL, headers=HEADERS, timeout=30)
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
+    # まず観測所情報ページを踏んでからリアルタイムページへ（通常のブラウジング動線を模す）
+    session.get(SITE_INFO_URL, timeout=30)
+
+    res = session.get(
+        REALTIME_LIST_URL, headers={"Referer": SITE_INFO_URL}, timeout=30
+    )
     res.raise_for_status()
     html = res.content.decode("cp932", errors="ignore")
+
     m = re.search(
         r'href="(http://www1\.river\.go\.jp/dat/dload/download/[^"]+\.dat)"', html
     )
     if not m:
+        # デバッグ用に、取得できたページの状態をログに出す
+        print(f"[DEBUG] status_code={res.status_code}")
+        print(f"[DEBUG] final url={res.url}")
+        print(f"[DEBUG] content length={len(html)}")
+        print(f"[DEBUG] head of content:\n{html[:1500]}")
         raise RuntimeError(
-            "dat リンクが見つかりませんでした。国交省側のページ構造が変わった可能性があります。"
+            "dat リンクが見つかりませんでした。国交省側のページ構造が変わったか、"
+            "アクセス元が制限されている可能性があります。上の[DEBUG]ログを確認してください。"
         )
     return m.group(1)
 
