@@ -23,7 +23,7 @@ import requests
 
 # ---- 設定 ----
 STATION_ID = "306031286607040"  # 大和川水系 大和川 藤井（ふじい）観測所
-THRESHOLD_M = float(os.environ.get("THRESHOLD_M", "0.1"))
+THRESHOLD_M = float(os.environ.get("THRESHOLD_M", "0.9"))
 NTFY_TOPIC = os.environ["NTFY_TOPIC"]  # GitHub Secrets で設定する（自分だけが知るランダムな文字列にすること）
 STATE_FILE = "data/state.json"
 
