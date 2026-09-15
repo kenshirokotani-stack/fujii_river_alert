@@ -58,10 +58,13 @@ def fetch_dat_url() -> str:
         REALTIME_LIST_URL, headers={"Referer": SITE_INFO_URL}, timeout=30
     )
     res.raise_for_status()
-    html = res.content.decode("cp932", errors="ignore")
+    html = res.content.decode("euc-jp", errors="ignore")
 
+    # dat へのリンクは絶対URL(http://www1.river.go.jp/...)の場合と
+    # 相対パス(/dat/dload/...)の場合があるため、両方に対応する。
     m = re.search(
-        r'href="(http://www1\.river\.go\.jp/dat/dload/download/[^"]+\.dat)"', html
+        r'href="((?:https?://www1\.river\.go\.jp)?/dat/dload/download/[^"]+\.dat)"',
+        html,
     )
     if not m:
         # デバッグ用に、取得できたページの状態をログに出す
@@ -73,14 +76,17 @@ def fetch_dat_url() -> str:
             "dat リンクが見つかりませんでした。国交省側のページ構造が変わったか、"
             "アクセス元が制限されている可能性があります。上の[DEBUG]ログを確認してください。"
         )
-    return m.group(1)
+    dat_path = m.group(1)
+    if dat_path.startswith("http"):
+        return dat_path
+    return f"https://www1.river.go.jp{dat_path}"
 
 
 def fetch_latest_level(dat_url: str):
     """.dat をダウンロードし、最新の有効な (日付, 時刻, 水位m) を返す。"""
     res = requests.get(dat_url, headers=HEADERS, timeout=30)
     res.raise_for_status()
-    text = res.content.decode("cp932", errors="ignore")
+    text = res.content.decode("euc-jp", errors="ignore")
 
     latest = None
     for line in text.splitlines():
