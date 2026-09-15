@@ -23,7 +23,12 @@ import requests
 
 # ---- 設定 ----
 STATION_ID = "306031286607040"  # 大和川水系 大和川 藤井（ふじい）観測所
-THRESHOLD_M = float(os.environ.get("THRESHOLD_M", "0.9"))
+
+# しきい値は複数指定できる。カンマ区切りで環境変数 THRESHOLDS に渡す（例: "0.9,1.0,1.1"）
+THRESHOLDS = sorted(
+    float(x) for x in os.environ.get("THRESHOLDS", "0.9").split(",") if x.strip()
+)
+
 NTFY_TOPIC = os.environ["NTFY_TOPIC"]  # GitHub Secrets で設定する（自分だけが知るランダムな文字列にすること）
 STATE_FILE = "data/state.json"
 
@@ -114,8 +119,10 @@ def fetch_latest_level(dat_url: str):
 def load_state() -> dict:
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {"notified": False, "last_checked": None, "last_level": None}
+            state = json.load(f)
+            state.setdefault("notified_thresholds", [])
+            return state
+    return {"notified_thresholds": [], "last_checked": None, "last_level": None}
 
 
 def save_state(state: dict) -> None:
@@ -124,11 +131,11 @@ def save_state(state: dict) -> None:
         json.dump(state, f, ensure_ascii=False, indent=2)
 
 
-def send_notification(date_str: str, time_str: str, value: float) -> None:
+def send_notification(date_str: str, time_str: str, value: float, threshold: float) -> None:
     title = "大和川 藤井 水位アラート"
     message = (
         f"{date_str} {time_str} 時点で水位 {value:.2f}m"
-        f"（しきい値 {THRESHOLD_M:.2f}m 以上）になりました。"
+        f"（しきい値 {threshold:.2f}m 以上）になりました。"
     )
     requests.post(
         f"https://ntfy.sh/{NTFY_TOPIC}",
@@ -146,23 +153,28 @@ def main() -> None:
     dat_url = fetch_dat_url()
     date_str, time_str, value = fetch_latest_level(dat_url)
     state = load_state()
+    notified = set(state.get("notified_thresholds", []))
 
     print(
         f"[INFO] 最新観測値: {date_str} {time_str} = {value:.2f}m "
         f"(前回チェック時の値: {state.get('last_level')})"
     )
+    print(f"[INFO] しきい値: {THRESHOLDS}")
 
-    if value >= THRESHOLD_M:
-        if not state.get("notified", False):
-            send_notification(date_str, time_str, value)
-            state["notified"] = True
-            print("[INFO] しきい値以上のため通知を送信しました。")
+    for th in THRESHOLDS:
+        if value >= th:
+            if th not in notified:
+                send_notification(date_str, time_str, value, th)
+                notified.add(th)
+                print(f"[INFO] しきい値 {th:.2f}m 以上のため通知を送信しました。")
+            else:
+                print(f"[INFO] しきい値 {th:.2f}m は既に通知済みのため送信しません。")
         else:
-            print("[INFO] しきい値以上ですが、既に通知済みのため今回は送信しません。")
-    else:
-        if state.get("notified", False):
-            print("[INFO] 水位がしきい値未満に戻ったため、通知フラグをリセットします。")
-        state["notified"] = False
+            if th in notified:
+                notified.discard(th)
+                print(f"[INFO] 水位がしきい値 {th:.2f}m 未満に戻ったため、通知フラグをリセットします。")
+
+    state["notified_thresholds"] = sorted(notified)
 
     jst = timezone(timedelta(hours=9))
     state["last_checked"] = datetime.now(jst).isoformat()
