@@ -1,9 +1,10 @@
 {
   "notified": true,
-  "last_checked": "2026-10-14T11:51:39.403709+09:00",
-  "last_level": 0.87,
+  "last_checked": "2026-10-14T12:27:36.378289+09:00",
+  "last_level": 0.94,
   "notified_thresholds": [
     0.7,
-    0.8
+    0.8,
+    0.9
   ]
 }
