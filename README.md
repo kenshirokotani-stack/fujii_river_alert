@@ -27,7 +27,7 @@
 1. **ntfyのトピック名を決める**
    - ntfy.shは「トピック名」を知っている人なら誰でも購読・送信できる仕組みです。
    - 他人に推測されないよう、長めのランダムな文字列にしてください。
-     例: `fujii-river-alert-8x7q2k9m`
+     例: 
    - スマホのntfyアプリでこのトピック名を「購読（Subscribe）」しておきます。
 
 2. **GitHubに新しいリポジトリを作成**
@@ -44,7 +44,7 @@
 4. **Secretsにトピック名を登録**
    - リポジトリの `Settings` → `Secrets and variables` → `Actions` → `New repository secret`
    - Name: `NTFY_TOPIC`
-   - Secret: 手順1で決めたトピック名（例: `fujii-river-alert-8x7q2k9m`）
+   - Secret: 手順1で決めたトピック名
 
 5. **Actionsに書き込み権限を付与**
    - `Settings` → `Actions` → `General` → `Workflow permissions` を
